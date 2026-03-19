@@ -1,0 +1,4 @@
+interface:
+  display_name: "VideoStand"
+  short_description: "Resume .mp4 por imagem + audio com timeline estimada."
+  default_prompt: "Analyze this .mp4 with sampled frames and audio transcript, then return a concise multimodal timeline with uncertainty notes."
