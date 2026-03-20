@@ -1,6 +1,6 @@
 {
   "name": "videostand-skill",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI to install the VideoStand skill for Codex or Kiro",
   "type": "module",
   "bin": {
