@@ -4,7 +4,8 @@
   "description": "CLI to install the VideoStand skill for Codex, Kiro, or Claude Code",
   "type": "module",
   "bin": {
-    "videostand": "./bin/videostand.js"
+    "videostand": "./bin/videostand.js",
+    "vs": "./bin/videostand.js"
   },
   "files": [
     "bin",

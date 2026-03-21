@@ -22,6 +22,9 @@ const VALID_TARGETS = Object.keys(TARGETS);
 function printHelp() {
   console.log('VideoStand CLI');
   console.log('');
+  console.log('Alias:');
+  console.log('  vs  Same as videostand');
+  console.log('');
   console.log('Usage:');
   console.log('  videostand init <codex|kiro|claude> [--force]');
   console.log('  videostand -g init <codex|kiro|claude> [--force]');

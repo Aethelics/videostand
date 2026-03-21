@@ -10,6 +10,13 @@ export HOME="$TMP_HOME"
 
 cd "$TMP_PROJECT"
 
+# ── Bin alias check (package metadata) ──
+BIN_ALIAS_PATH="$(node -p "require('$ROOT_DIR/package.json').bin.vs")"
+if [[ "$BIN_ALIAS_PATH" != "./bin/videostand.js" ]]; then
+  echo "ERROR: bin alias 'vs' is not mapped to ./bin/videostand.js"
+  exit 1
+fi
+
 # ── Codex local install ──
 node "$ROOT_DIR/bin/videostand.js" init codex
 

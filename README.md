@@ -9,6 +9,8 @@
 
 CLI para instalar a skill **VideoStand** no **Codex**, no **Kiro** e no **Claude Code**, com suporte a instalação **local** e **global**.
 
+Alias rapido disponivel: `vs` (mesmo comportamento de `videostand`).
+
 ## O que este pacote faz
 
 1. Copia a skill `videostand` já pronta para a estrutura correta do agent.
@@ -43,6 +45,9 @@ videostand init kiro
 
 # 4) Instalar skill local para Claude Code
 videostand init claude
+
+# 5) Mesmo comando usando alias curto
+vs init codex
 ```
 
 ## Comandos
@@ -57,6 +62,15 @@ videostand -g where <codex|kiro|claude>
 videostand --help
 videostand --version
 videostand -v
+
+# Alias curto equivalente
+vs init <codex|kiro|claude> [--force]
+vs -g init <codex|kiro|claude> [--force]
+vs where <codex|kiro|claude>
+vs -g where <codex|kiro|claude>
+vs --help
+vs --version
+vs -v
 ```
 
 ## Como funciona
