@@ -14,6 +14,7 @@ const PACKAGE_VERSION = JSON.parse(readFileSync(PACKAGE_JSON_PATH, 'utf-8')).ver
 const TARGETS = {
   codex: '.codex',
   kiro: '.kiro',
+  claude: '.claude',
 };
 
 const VALID_TARGETS = Object.keys(TARGETS);
@@ -22,10 +23,10 @@ function printHelp() {
   console.log('VideoStand CLI');
   console.log('');
   console.log('Usage:');
-  console.log('  videostand init <codex|kiro> [--force]');
-  console.log('  videostand -g init <codex|kiro> [--force]');
-  console.log('  videostand where <codex|kiro>');
-  console.log('  videostand -g where <codex|kiro>');
+  console.log('  videostand init <codex|kiro|claude> [--force]');
+  console.log('  videostand -g init <codex|kiro|claude> [--force]');
+  console.log('  videostand where <codex|kiro|claude>');
+  console.log('  videostand -g where <codex|kiro|claude>');
   console.log('  videostand --version');
   console.log('  videostand -v');
   console.log('  videostand --help');
@@ -35,8 +36,9 @@ function printHelp() {
   console.log('  where  Print installation path for the given target');
   console.log('');
   console.log('Targets:');
-  console.log('  codex  Use .codex directory');
-  console.log('  kiro   Use .kiro directory');
+  console.log('  codex   Use .codex directory');
+  console.log('  kiro    Use .kiro directory');
+  console.log('  claude  Use .claude directory');
   console.log('');
   console.log('Options:');
   console.log('  -g, --global  Use ~/.<target> instead of ./.<target>');
@@ -152,7 +154,7 @@ function main() {
   }
 
   if (!target) {
-    console.error(`Missing target. Usage: videostand ${command} <codex|kiro>`);
+    console.error(`Missing target. Usage: videostand ${command} <codex|kiro|claude>`);
     process.exit(1);
   }
 

@@ -7,12 +7,12 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="MIT License"></a>
 </p>
 
-CLI para instalar a skill **VideoStand** no **Codex** e no **Kiro**, com suporte a instalação **local** e **global**.
+CLI para instalar a skill **VideoStand** no **Codex**, no **Kiro** e no **Claude Code**, com suporte a instalação **local** e **global**.
 
 ## O que este pacote faz
 
 1. Copia a skill `videostand` já pronta para a estrutura correta do agent.
-2. Permite escolher `codex` ou `kiro` como target.
+2. Permite escolher `codex`, `kiro` ou `claude` como target.
 3. Permite instalar no projeto atual (`./`) ou no home do usuário (`~/`) com `-g`.
 
 ## Instalação
@@ -40,16 +40,19 @@ videostand -g init codex
 
 # 3) Instalar skill local para Kiro
 videostand init kiro
+
+# 4) Instalar skill local para Claude Code
+videostand init claude
 ```
 
 ## Comandos
 
 ```bash
-videostand init <codex|kiro> [--force]
-videostand -g init <codex|kiro> [--force]
+videostand init <codex|kiro|claude> [--force]
+videostand -g init <codex|kiro|claude> [--force]
 
-videostand where <codex|kiro>
-videostand -g where <codex|kiro>
+videostand where <codex|kiro|claude>
+videostand -g where <codex|kiro|claude>
 
 videostand --help
 videostand --version
@@ -59,7 +62,7 @@ videostand -v
 ## Como funciona
 
 ```text
-1) Você escolhe target: codex ou kiro
+1) Você escolhe target: codex, kiro ou claude
 2) Você escolhe modo:
    - sem -g: instala local no diretório atual
    - com -g: instala global no HOME
@@ -77,6 +80,7 @@ Instala no diretório em que você executou o comando:
 ```bash
 ./.codex/skills/videostand
 ./.kiro/skills/videostand
+./.claude/skills/videostand
 ```
 
 ### Modo global (`-g`)
@@ -86,6 +90,7 @@ Instala no HOME do usuário:
 ```bash
 ~/.codex/skills/videostand
 ~/.kiro/skills/videostand
+~/.claude/skills/videostand
 ```
 
 ## Exemplos práticos
@@ -97,19 +102,27 @@ videostand init codex
 # Instala local para Kiro
 videostand init kiro
 
+# Instala local para Claude Code
+videostand init claude
+
 # Instala global para Codex
 videostand -g init codex
 
 # Instala global para Kiro
 videostand -g init kiro
 
+# Instala global para Claude Code
+videostand -g init claude
+
 # Força sobrescrita
 videostand init codex --force
 videostand -g init kiro --force
+videostand init claude --force
 
 # Ver caminhos
 videostand where codex
 videostand -g where kiro
+videostand where claude
 ```
 
 ## Troubleshooting
@@ -118,7 +131,7 @@ videostand -g where kiro
    - Use `--force` para sobrescrever.
 
 2. `Missing target...`
-   - Informe o target: `codex` ou `kiro`.
+   - Informe o target: `codex`, `kiro` ou `claude`.
 
 3. `Unknown option...`
    - Rode `videostand --help` e use apenas as opções suportadas.

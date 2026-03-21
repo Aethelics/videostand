@@ -72,16 +72,57 @@ if [[ ! -f "$GLOBAL_KIRO_SKILL" ]]; then
   exit 1
 fi
 
+# ── Claude local install ──
+node "$ROOT_DIR/bin/videostand.js" init claude
+
+LOCAL_CLAUDE_SKILL="$TMP_PROJECT/.claude/skills/videostand/SKILL.md"
+if [[ ! -f "$LOCAL_CLAUDE_SKILL" ]]; then
+  echo "ERROR: local claude skill file not found at $LOCAL_CLAUDE_SKILL"
+  exit 1
+fi
+
+if [[ -f "$HOME/.claude/skills/videostand/SKILL.md" ]]; then
+  echo "ERROR: global claude skill should not exist after local install"
+  exit 1
+fi
+
+# claude local without --force should fail
+if node "$ROOT_DIR/bin/videostand.js" init claude; then
+  echo "ERROR: expected second local claude install without --force to fail"
+  exit 1
+fi
+
+node "$ROOT_DIR/bin/videostand.js" init claude --force
+
+# ── Claude global install ──
+node "$ROOT_DIR/bin/videostand.js" -g init claude
+
+GLOBAL_CLAUDE_SKILL="$HOME/.claude/skills/videostand/SKILL.md"
+if [[ ! -f "$GLOBAL_CLAUDE_SKILL" ]]; then
+  echo "ERROR: global claude skill file not found at $GLOBAL_CLAUDE_SKILL"
+  exit 1
+fi
+
 # ── Cross-target isolation ──
-# Installing kiro should not have affected codex (already installed above)
+# Installing claude should not have affected codex or kiro (already installed above)
 if [[ ! -f "$LOCAL_CODEX_SKILL" ]]; then
-  echo "ERROR: codex local skill disappeared after kiro install"
+  echo "ERROR: codex local skill disappeared after claude install"
   exit 1
 fi
 
 if [[ ! -f "$GLOBAL_CODEX_SKILL" ]]; then
-  echo "ERROR: codex global skill disappeared after kiro install"
+  echo "ERROR: codex global skill disappeared after claude install"
   exit 1
 fi
 
-echo "E2E passed: codex + kiro local/global init + force + isolation ok"
+if [[ ! -f "$LOCAL_KIRO_SKILL" ]]; then
+  echo "ERROR: kiro local skill disappeared after claude install"
+  exit 1
+fi
+
+if [[ ! -f "$GLOBAL_KIRO_SKILL" ]]; then
+  echo "ERROR: kiro global skill disappeared after claude install"
+  exit 1
+fi
+
+echo "E2E passed: codex + kiro + claude local/global init + force + isolation ok"

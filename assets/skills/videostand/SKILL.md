@@ -1,20 +1,24 @@
 ---
 name: videostand
-description: Resumir videos locais (.mp4) ou links do YouTube em modo local-first, sem depender de LLM por API para entender imagem/audio. Use quando Codex receber um video, URL do YouTube, ou quando o usuario pedir resumo/timeline de gravacao de tela, gameplay ou vinheta. O fluxo principal usa frames + transcricao local (faster-whisper) e a propria IA do Codex para interpretar os keyframes.
+description: Resumir videos locais (.mp4) ou links do YouTube em modo local-first, sem depender de LLM por API para entender imagem/audio. Use quando o agent receber um video, URL do YouTube, ou quando o usuario pedir resumo/timeline de gravacao de tela, gameplay ou vinheta. O fluxo principal usa frames + transcricao local (faster-whisper) e a propria IA do agent para interpretar os keyframes.
 ---
 
 # VideoStand
 
-Extrair frames representativos, transcrever audio localmente quando disponivel e preparar um pacote de revisao para a propria IA do Codex gerar o resumo final.
+Extrair frames representativos, transcrever audio localmente quando disponivel e preparar um pacote de revisao para a propria IA do agent gerar o resumo final.
 
 Priorizar amostragem por tempo (`--interval-seconds`) em videos longos. Usar `--every-n-frames` quando for necessario granularidade por frame.
 
 ## Quick Start
 
-Definir o caminho da skill:
+Definir o caminho da skill (ajuste o target conforme o agent usado: `.codex`, `.kiro` ou `.claude`):
 
 ```bash
-export VSUM="/home/marcelo/videostand/.codex/skills/videostand/scripts"
+# Codex / Kiro
+export VSUM="<skill-install-path>/scripts"
+
+# Claude Code: use a variavel built-in
+# ${CLAUDE_SKILL_DIR}/scripts
 ```
 
 Executar pipeline completo:
@@ -112,7 +116,7 @@ Regra: priorizar tempo total de resposta sem comprometer a qualidade minima do r
 4. Gerar `frames_manifest.json` com timestamps estimados.
 5. Transcrever audio localmente com `transcribe_audio_local.py` quando existir stream de audio.
 6. Preparar keyframes de revisao + pacote markdown com `prepare_codex_video_review.py`.
-7. Abrir `review_keyframes/*.jpg` e `codex_review_pack.md` no proprio Codex.
+7. Abrir `review_keyframes/*.jpg` e `codex_review_pack.md` no proprio agent.
 8. Produzir resumo final para o usuario (sem revelar bastidores).
 
 ## Core Commands
@@ -164,7 +168,7 @@ python3 "$VSUM/transcribe_audio_local.py" \
 
 - `AUTO_SMART_SAMPLING=1` (padrao): escolhe automaticamente `INTERVAL_SECONDS`, `MAX_FRAMES` e `BATCH_SIZE` com base na duracao do video.
 - `AUDIO_BACKEND=local` (padrao): usa transcricao local.
-- `SUMMARY_BACKEND=codex-local` (padrao): prepara pack local para a IA do Codex.
+- `SUMMARY_BACKEND=codex-local` (padrao): prepara pack local para a IA do agent.
 - `LOCAL_ASR_MODEL=small` (padrao): modelo Whisper local.
 - `MAX_KEYFRAMES_FOR_REVIEW=24` (padrao): quantidade de keyframes para revisao.
 - `MAX_WIDTH` e `JPEG_QUALITY`: controlam tamanho dos frames enviados.
