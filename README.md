@@ -1,4 +1,4 @@
-# VideoStand Skill CLI
+# VideoStand CLI
 
 <p align="center">
   <a href="https://www.npmjs.com/package/videostand-skill"><img src="https://img.shields.io/npm/v/videostand-skill?style=for-the-badge&logo=npm" alt="npm version"></a>
