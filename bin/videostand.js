@@ -107,7 +107,7 @@ function formatColumns(items) {
 }
 
 function printHelp() {
-  printHeader(`VideoStand CLI v${PACKAGE_VERSION}`, 'Instale e valide a skill em multiplos agentes');
+  printHeader(`VideoStand CLI v${PACKAGE_VERSION}`, 'Install and validate the skill in multiple agents.');
   console.log('');
   console.log(colorize('Usage', 'bold'));
   printKeyValueRows([
@@ -124,6 +124,7 @@ function printHelp() {
   console.log(colorize('Commands', 'bold'));
   printKeyValueRows([
     ['init <target|all>', 'Install skill folder for one/all targets'],
+    ['remove <target|all>', 'Remove skill folder from one/all targets'],
     ['where <target|all>', 'Print installation path for one/all targets'],
     ['doctor [target|all]', 'Check dependencies and installation status'],
     ['--version, -v', 'Print CLI version'],
@@ -141,6 +142,7 @@ function printHelp() {
     ['-g, --global', 'Use ~/.<target> instead of ./.<target>'],
     ['--force', 'Overwrite existing skill folder'],
     ['--strict', 'With doctor: exit with code 1 if required deps are missing'],
+    ['--fix', 'With doctor: auto-install missing dependencies (ffmpeg/faster-whisper)'],
     ['--json', 'With doctor: output machine-readable JSON'],
   ]);
   console.log('');
@@ -159,6 +161,7 @@ function parseOptions(args) {
     global: false,
     strict: false,
     json: false,
+    fix: false,
   };
 
   for (let i = 0; i < args.length; i += 1) {
@@ -181,6 +184,11 @@ function parseOptions(args) {
 
     if (arg === '--json') {
       options.json = true;
+      continue;
+    }
+
+    if (arg === '--fix') {
+      options.fix = true;
       continue;
     }
 
@@ -234,7 +242,20 @@ function commandInit(options, target) {
     process.exit(1);
   }
 
-  const targets = target === ALL_TARGETS_KEYWORD ? VALID_TARGETS : [target];
+  let targets = target === ALL_TARGETS_KEYWORD ? VALID_TARGETS : [target];
+
+  if (target === ALL_TARGETS_KEYWORD) {
+    targets = targets.filter((t) => {
+      const { targetRoot } = getPaths(options, t);
+      return existsSync(targetRoot);
+    });
+
+    if (targets.length === 0) {
+      console.log(`${statusTag('info')} No existing agent directories found. Skipping installation.`);
+      return;
+    }
+  }
+
   const targetData = targets.map((t) => ({
     target: t,
     ...getPaths(options, t),
@@ -324,8 +345,33 @@ function buildInstallChecks(options, targets) {
 }
 
 function commandDoctor(options, target) {
-  const targets =
+  let targets =
     !target || target === ALL_TARGETS_KEYWORD ? VALID_TARGETS : [target];
+
+  if (!target || target === ALL_TARGETS_KEYWORD) {
+    targets = targets.filter((t) => {
+      const { targetRoot } = getPaths(options, t);
+      return existsSync(targetRoot);
+    });
+  }
+
+  if (options.fix && !options.json) {
+    const initialChecks = buildEnvironmentChecks();
+
+    if (initialChecks.missingRequired.includes('ffmpeg') || initialChecks.missingRequired.includes('ffprobe')) {
+      console.log(`${statusTag('info')} Missing ffmpeg/ffprobe. Attempting auto-install...`);
+      const scriptPath = resolve(SOURCE_SKILL_DIR, 'scripts', 'install_ffmpeg.sh');
+      spawnSync('bash', [scriptPath], { stdio: 'inherit' });
+    }
+
+    if (initialChecks.required.python3 && !initialChecks.fasterWhisper) {
+      console.log(`${statusTag('info')} Missing faster-whisper. Attempting auto-install...`);
+      const scriptPath = resolve(SOURCE_SKILL_DIR, 'scripts', 'install_local_asr.sh');
+      spawnSync('bash', [scriptPath], { stdio: 'inherit' });
+    }
+    console.log('');
+  }
+
   const envChecks = buildEnvironmentChecks();
   const installChecks = buildInstallChecks(options, targets);
 
@@ -403,6 +449,29 @@ function commandDoctor(options, target) {
   }
 }
 
+function commandRemove(options, target) {
+  const targets = target === ALL_TARGETS_KEYWORD ? VALID_TARGETS : [target];
+  let removedCount = 0;
+
+  for (const t of targets) {
+    const { targetDir } = getPaths(options, t);
+    if (existsSync(targetDir)) {
+      rmSync(targetDir, { recursive: true, force: true });
+      console.log(`${statusTag('ok')} Removed skill from "${t}".`);
+      removedCount++;
+    } else {
+      if (target !== ALL_TARGETS_KEYWORD) {
+        console.error(`${statusTag('error')} Skill not found for "${t}".`);
+        console.error(`  path: ${targetDir}`);
+        process.exit(1);
+      }
+    }
+  }
+
+  console.log('');
+  console.log(`${statusTag('ok')} Removal finished. Removed from ${removedCount} target(s).`);
+}
+
 function main() {
   const args = process.argv.slice(2);
 
@@ -426,13 +495,13 @@ function main() {
   const command = positionals[0];
   const target = positionals[1];
 
-  if (command !== 'init' && command !== 'where' && command !== 'doctor') {
+  if (command !== 'init' && command !== 'where' && command !== 'doctor' && command !== 'remove') {
     console.error(`${statusTag('error')} Unknown command: ${command}`);
     printHelp();
     process.exit(1);
   }
 
-  if ((command === 'init' || command === 'where') && !target) {
+  if ((command === 'init' || command === 'where' || command === 'remove') && !target) {
     console.error(
       `${statusTag('error')} Missing target. Usage: videostand ${command} <${VALID_TARGETS.join('|')}|all>`
     );
@@ -465,6 +534,11 @@ function main() {
 
   if (command === 'doctor') {
     commandDoctor(options, target);
+    return;
+  }
+
+  if (command === 'remove') {
+    commandRemove(options, target);
     return;
   }
 }

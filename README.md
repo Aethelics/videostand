@@ -78,11 +78,14 @@ vs init codex
 videostand init <target|all> [--force]      Install the skill
 videostand -g init <target|all> [--force]   Install globally
 
+videostand remove <target|all>              Remove the skill
+videostand -g remove <target|all>           Remove globally
+
 videostand where <target|all>               Show installation path
 videostand -g where <target|all>
 
-videostand doctor [target|all] [--strict] [--json]   Check dependencies
-videostand -g doctor [target|all] [--strict] [--json]
+videostand doctor [target|all] [--strict] [--fix] [--json]   Check dependencies
+videostand -g doctor [target|all] [--strict] [--fix] [--json]
 
 videostand --help
 videostand --version  |  videostand -v
@@ -118,6 +121,7 @@ Check dependencies before running the skill:
 videostand doctor              # check general environment
 videostand doctor codex        # check specific target
 videostand -g doctor claude --strict
+videostand doctor all --fix    # auto-install missing dependencies
 videostand doctor all --json   # machine-readable output for CI
 ```
 
@@ -163,6 +167,16 @@ videostand where all
 ```bash
 videostand init codex --force
 videostand -g init claude --force
+```
+</details>
+
+<details>
+<summary><strong>Remove skill</strong></summary>
+
+```bash
+videostand remove codex
+videostand remove all
+videostand -g remove all
 ```
 </details>
 

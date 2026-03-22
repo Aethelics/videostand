@@ -164,9 +164,10 @@ if [ -n "${JPEG_QUALITY:-}" ]; then
   EXTRACT_CMD+=(--jpeg-quality "$JPEG_QUALITY")
 fi
 
-echo "[info] Extracting frames..."
-"${EXTRACT_CMD[@]}"
+echo "[info] Starting parallel processing (Extraction + Transcription)..."
 
+# --- 1. Audio Transcription Setup ---
+TRANS_CMD=()
 if [ "${ENABLE_AUDIO_TRANSCRIPT:-1}" != "0" ]; then
   AUDIO_BACKEND="${AUDIO_BACKEND:-local}"
   if [ "$AUDIO_BACKEND" = "api" ]; then
@@ -200,25 +201,41 @@ if [ "${ENABLE_AUDIO_TRANSCRIPT:-1}" != "0" ]; then
       TRANS_CMD+=(--vad-filter)
     fi
   fi
+fi
 
-  echo "[info] Transcribing audio..."
-  if "${TRANS_CMD[@]}"; then
+# --- 2. Run background jobs ---
+echo "[info] Extraction: Starting..."
+"${EXTRACT_CMD[@]}" > "$OUTPUT_DIR/extract_frames.log" 2>&1 &
+PID_EXTRACT=$!
+
+PID_TRANS=""
+if [ ${#TRANS_CMD[@]} -gt 0 ]; then
+  echo "[info] Transcription: Starting..."
+  "${TRANS_CMD[@]}" > "$OUTPUT_DIR/transcribe_audio.log" 2>&1 &
+  PID_TRANS=$!
+fi
+
+# --- 3. Wait and monitor ---
+TRANS_RC=0
+if [ -n "$PID_TRANS" ]; then
+  wait "$PID_TRANS" || TRANS_RC=$?
+  if [ "$TRANS_RC" -eq 0 ]; then
     echo "[ok] Audio transcript generated."
+  elif [ "$TRANS_RC" -eq 2 ]; then
+    echo "[warn] Video has no audio stream; continuing with visual summary only."
+  elif [ "$TRANS_RC" -eq 4 ]; then
+    echo "[warn] Local ASR dependency missing (faster-whisper)."
+  elif [ "${STRICT_AUDIO:-0}" = "1" ]; then
+    echo "[error] Audio transcription failed (rc=$TRANS_RC) and STRICT_AUDIO=1." >&2
+    exit "$TRANS_RC"
   else
-    TRANS_RC=$?
-    if [ "$TRANS_RC" -eq 2 ]; then
-      echo "[warn] Video has no audio stream; continuing with visual summary only."
-    elif [ "$TRANS_RC" -eq 4 ]; then
-      echo "[warn] Local ASR dependency missing; continuing with visual summary only."
-      echo "[hint] Install local ASR: python3 -m pip install --upgrade faster-whisper"
-    elif [ "${STRICT_AUDIO:-0}" = "1" ]; then
-      echo "[error] Audio transcription failed and STRICT_AUDIO=1." >&2
-      exit "$TRANS_RC"
-    else
-      echo "[warn] Audio transcription failed (rc=$TRANS_RC); continuing with visual summary only."
-    fi
+    echo "[warn] Audio transcription failed (rc=$TRANS_RC); continuing with visual summary only."
   fi
 fi
+
+wait "$PID_EXTRACT"
+echo "[ok] Frame extraction finished."
+
 
 SUMMARY_BACKEND="${SUMMARY_BACKEND:-codex-local}"
 if [ "$SUMMARY_BACKEND" = "api" ]; then

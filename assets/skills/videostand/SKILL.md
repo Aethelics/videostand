@@ -150,6 +150,16 @@ Regra: priorizar tempo total de resposta sem comprometer a qualidade minima do r
 - Informar apenas que a instalacao sera iniciada e que o sistema pode abrir prompt de permissao/senha.
 - Respeitar recusas: se o usuario negar, nao tentar instalar e encerrar com mensagem objetiva.
 
+## Cleanup Policy (recomendado)
+
+- Apos produzir o resumo final para o usuario e garantir que a entrega foi concluida, o agent deve limpar os arquivos temporarios pesados para economizar espaco em disco do usuario.
+- Executar apenas se o resumo ja tiver sido gerado com sucesso.
+- Comando:
+  ```bash
+  "$VSUM/cleanup.sh" ./output-directory
+  ```
+- Esta acao apaga frames, pastas e logs, mantendo apenas os arquivos de resumo (.md).
+
 ## Workflow
 
 1. Resolver input:
@@ -209,6 +219,12 @@ python3 "$VSUM/transcribe_audio_local.py" \
   --segments-json ./tmp-frames/audio_transcript.segments.json \
   --model-size small \
   --language pt
+```
+
+Limpar arquivos temporarios e logs (pos-processamento):
+
+```bash
+python3 "$VSUM/cleanup.sh" ./tmp-frames
 ```
 
 ## Performance Knobs
