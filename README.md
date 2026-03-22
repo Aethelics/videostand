@@ -7,7 +7,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="MIT License"></a>
 </p>
 
-CLI para instalar a skill **VideoStand** em 15 agents de IA — **Codex**, **Kiro**, **Claude Code**, **Cline**, **Cursor**, **Continue**, **Roo**, **OpenHands**, **Qwen**, **Copilot**, **Junie**, **Kilocode**, **CommandCode**, **Kode** e **Mux** — com suporte a instalação **local** e **global**.
+CLI para instalar a skill **VideoStand** em 16 agents de IA — **Codex**, **Kiro**, **Claude Code**, **Cline**, **Cursor**, **Continue**, **Roo**, **OpenHands**, **Qwen**, **Copilot**, **Junie**, **Kilocode**, **CommandCode**, **Kode**, **Mux** e **Openclaw** — com suporte a instalação **local** e **global**.
 
 Alias rapido disponivel: `vs` (mesmo comportamento de `videostand`).
 
