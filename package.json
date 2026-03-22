@@ -16,6 +16,14 @@
   "scripts": {
     "test:e2e": "bash ./e2e/install.e2e.sh"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Marcelo-Henry/videostand.git"
+  },
+  "homepage": "https://github.com/Marcelo-Henry/videostand#readme",
+  "bugs": {
+    "url": "https://github.com/Marcelo-Henry/videostand/issues"
+  },
   "engines": {
     "node": ">=18"
   },
