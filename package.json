@@ -1,6 +1,6 @@
 {
   "name": "vs-cli",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "CLI to install the VideoStand skill for +15 agents.",
   "type": "module",
   "bin": {
