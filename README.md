@@ -11,7 +11,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="MIT License" /></a>
 </p>
 
-<p><strong>Install the VideoStand skill across 16 AI agents with a single command.</strong></p>
+<p><strong>Install the VideoStand skill across 17 AI agents with a single command.</strong></p>
 
 </div>
 
@@ -30,6 +30,7 @@
 
 | Agent          | Target        |
 | -------------- | ------------- |
+| Antigravity    | `antigravity` |
 | OpenAI Codex   | `codex`       |
 | Kiro           | `kiro`        |
 | Claude Code    | `claude`      |
@@ -196,11 +197,11 @@ videostand -g remove all
 | Error                     | Solution                               |
 | ------------------------- | -------------------------------------- |
 | `Skill already exists...` | Use `--force` to overwrite             |
-| `Missing target...`       | Provide one of the 15 targets or `all` |
+| `Missing target...`       | Provide one of the 17 targets or `all` |
 | `Unknown option...`       | Run `videostand --help`                |
 
 ---
 
 <div align="center">
-  <sub>Made with ❤️ by Marcelo and Codex</sub>
+  <sub>Made with ❤️ by Marcelo, Codex and Antigravity</sub>
 </div>
