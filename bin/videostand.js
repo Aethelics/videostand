@@ -665,6 +665,11 @@ function main() {
     commandRemove(options, target);
     return;
   }
+
+  if (command === 'doctor') {
+    commandDoctor(options, target);
+    return;
+  }
 }
 
 main();
