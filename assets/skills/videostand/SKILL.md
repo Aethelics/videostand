@@ -176,7 +176,58 @@ Regra: priorizar tempo total de resposta sem comprometer a qualidade minima do r
 5. Transcrever audio localmente com `transcribe_audio_local.py` quando existir stream de audio.
 6. Preparar keyframes de revisao + pacote markdown com `prepare_codex_video_review.py`.
 7. Abrir `review_keyframes/*.jpg` e `codex_review_pack.md` no proprio agent.
-8. Produzir resumo final para o usuario (sem revelar bastidores).
+8. **Person Framing Analysis** (obrigatório quando cortes virais forem solicitados): seguir a seção abaixo.
+9. Produzir resumo final para o usuario (sem revelar bastidores).
+
+## Person Framing Analysis (Enquadramento Inteligente)
+
+Antes de sugerir cortes virais, o agent DEVE analisar o enquadramento da pessoa no vídeo para recomendar o melhor modo de formatação vertical.
+
+### Estratégia de Amostragem: 25 Frames em 5 Regiões
+
+O agent deve extrair e ler visualmente **25 frames** distribuídos em 5 regiões do vídeo:
+
+| Região | Posição no vídeo             | Frames                                |
+| ------ | ---------------------------- | ------------------------------------- |
+| R1     | Início (0-10%)               | 5 frames espaçados dentro desta faixa |
+| R2     | Entre início e meio (25-35%) | 5 frames espaçados                    |
+| R3     | Meio (45-55%)                | 5 frames espaçados                    |
+| R4     | Entre meio e fim (65-75%)    | 5 frames espaçados                    |
+| R5     | Final (90-100%)              | 5 frames espaçados                    |
+
+Para obter esses frames, o agent deve usar `extract_frames.py` com `--interval-seconds` calculado para capturar frames nessas regiões, ou usar `ffmpeg` diretamente com `-ss` em timestamps específicos.
+
+### Análise Visual dos 25 Frames
+
+Ao ler os 25 frames, o agent deve responder mentalmente:
+
+1. **Há uma pessoa visível na maioria dos frames?** (>80% dos frames = sim)
+2. **A pessoa está consistentemente na mesma posição horizontal?**
+   - Centro: a pessoa ocupa a faixa central do frame
+   - Esquerda: a pessoa está consistentemente à esquerda
+   - Direita: a pessoa está consistentemente à direita
+3. **A posição é estável ao longo de todas as 5 regiões?**
+   - Se sim em pelo menos 4 de 5 regiões → posição consistente confirmada
+   - Se não → posição variável, usar modo padrão
+
+### Dois Modos de Formatação Vertical
+
+Com base na análise:
+
+| Resultado da Análise                          | Modo Recomendado                                                           | Flag `clip_video.py`                     |
+| --------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------- |
+| Pessoa fixa no centro                         | **Person Crop** — crop apertado na pessoa, sem blur, ela ocupa a tela toda | `--person-crop --person-position center` |
+| Pessoa fixa à esquerda                        | **Person Crop** ajustado à esquerda                                        | `--person-crop --person-position left`   |
+| Pessoa fixa à direita                         | **Person Crop** ajustado à direita                                         | `--person-crop --person-position right`  |
+| Pessoa se move / sem pessoa / câmera dinâmica | **Modo Padrão** — vídeo horizontal centralizado com fundo borrado          | `--vertical`                             |
+
+### Apresentação ao Usuário
+
+Quando o agent detectar que person-crop é viável, ele deve incluir na proposta de cortes virais:
+
+> "Identifiquei que você aparece sempre centralizado(a) no vídeo. Posso fazer o corte focado em você (sem bordas laterais, você ocupa toda a tela) ou no formato padrão (vídeo original no centro com fundo desfocado). Qual prefere?"
+
+Se o usuário não escolher, usar **person-crop** como padrão quando a análise confirmar posição consistente.
 
 ## Core Commands
 
@@ -223,7 +274,7 @@ python3 "$VSUM/transcribe_audio_local.py" \
   --language pt
 ```
 
-Extrair um corte específico (clipping):
+Extrair um corte com fundo borrado (modo padrão):
 
 ```bash
 python3 "$VSUM/clip_video.py" \
@@ -231,7 +282,19 @@ python3 "$VSUM/clip_video.py" \
   --output ./clip_viral_01.mp4 \
   --start 00:01:20 \
   --end 00:01:55 \
-  --vertical  # opcional: corta 9:16 para TikTok/Reels
+  --vertical  # 9:16 com fundo borrado
+```
+
+Extrair um corte focado na pessoa (person-crop):
+
+```bash
+python3 "$VSUM/clip_video.py" \
+  --input ./video.mp4 \
+  --output ./clip_viral_01.mp4 \
+  --start 00:01:20 \
+  --end 00:01:55 \
+  --person-crop \
+  --person-position center  # center | left | right
 ```
 
 Limpar arquivos temporarios e logs (pos-processamento):
@@ -287,25 +350,89 @@ SUMMARY_BACKEND=api \
 "$VSUM/run_video_summary.sh" ./video.mp4 ./output-api gpt-4.1-mini
 ```
 
-## Viral Video Strategy (New)
+## Viral Video Strategy (Especialização Profunda)
 
-Ao analisar o `codex_review_pack.md`, o agent deve tentar identificar de 1 a 3 momentos com alto potencial de engajamento (viral), tudo com base na amostragem inteligente padrão (não é necessário reprocessamento).
+O agent é um **especialista em identificar momentos virais** com qualidade profissional. Ao analisar o `codex_review_pack.md` e o transcript, o agent deve encontrar de 1 a 5 momentos com alto potencial de engajamento.
 
-Critérios para um bom corte:
-- **Hook Forte**: uma frase impactante ou ação visual nos primeiros 3 segundos.
-- **Valor/Punchline**: uma explicação clara, uma piada ou um desfecho épico.
-- **Duração Ideal**: entre 15 e 60 segundos.
+Esta análise se apoia em **três pilares obrigatórios**:
+
+### Pilar 1: Raciocínio Completo (REGRA CRÍTICA — NUNCA VIOLAR)
+
+O agent **JAMAIS** deve sugerir um corte que interrompa o raciocínio da pessoa no meio de uma ideia. Esta é a regra mais importante da skill.
+
+**Regras de completude:**
+- Cada corte DEVE conter **início, desenvolvimento e conclusão** de uma ideia ou argumento.
+- O agent deve ler o transcript do trecho candidato e confirmar que:
+  - A pessoa **introduz** o tema/ideia no início do trecho.
+  - A pessoa **desenvolve** com explicação, exemplo ou argumento.
+  - A pessoa **conclui** com uma frase de fechamento, resumo ou punchline.
+- Se um raciocínio forte se estende além de 60 segundos, o agent **DEVE propor o trecho completo**, mesmo que ultrapasse a "duração ideal". **Completude do pensamento > duração.**
+- Se não há como isolar o raciocínio completo em menos de 90 segundos, o agent deve informar isso ao usuário e propor o trecho inteiro.
+
+**Sinais de corte incompleto (PROIBIDO):**
+- Trecho termina com "...então o que acontece é..." ou "...por isso que eu acho que..."
+- Trecho começa no meio de uma explicação sem contexto
+- A pessoa está claramente construindo um argumento que não chega à conclusão no corte
+- O espectador ficaria pensando "e daí? o que ele quis dizer com isso?"
+
+### Pilar 2: Detecção de Fala de Qualidade
+
+O agent deve priorizar trechos onde a pessoa **fala excepcionalmente bem** sobre o assunto. Os itens abaixo são **sinais indicativos, não requisitos** — basta **um único sinal** para marcar o trecho como fala de qualidade. Quanto mais sinais presentes, mais forte o trecho:
+
+- **Clareza excepcional**: a pessoa explica algo complexo de forma simples e direta.
+- **Entusiasmo genuíno**: a energia na fala aumenta, a pessoa se empolga com o tema.
+- **Analogias fortes**: a pessoa usa comparações que tornam o conceito memorável.
+- **Exemplos práticos**: a pessoa ilustra com casos reais (nem todo bom trecho tem isso — é um bônus, não obrigatório).
+- **Frases citáveis**: frases que sozinhas já trazem valor e são compartilháveis.
+  - Ex: "O segredo não é trabalhar mais, é eliminar o que não importa."
+- **Convicção e autoridade**: a pessoa demonstra domínio do assunto com segurança.
+
+O agent deve marcar esses trechos com alta prioridade na proposta, usando a tag `[FALA FORTE]` na descrição do corte.
+
+### Pilar 3: Potencial Viral (Hooks de Engajamento)
+
+Critérios para identificar potencial viral no trecho:
+
+- **Hook nos primeiros 3 segundos**: frase impactante, pergunta provocativa, afirmação controversa ou ação visual surpreendente.
+- **Revelação / Plot Twist**: um "momento aha" ou revelação inesperada que muda a perspectiva.
+- **Punchline / Conclusão forte**: o trecho termina com impacto — uma frase marcante, uma risada, uma reação forte.
+- **Emoção autêntica**: surpresa, indignação, humor, vulnerabilidade — reações reais que conectam.
+- **Contraste forte**: antes/depois, expectativa/realidade, mito/verdade — o cérebro adora contraste.
+- **Universalidade**: o tema ressoa com muita gente, não é nicho demais.
+
+### Duração dos Cortes
+
+| Tipo de Conteúdo               | Duração Alvo | Flexibilidade                               |
+| ------------------------------ | ------------ | ------------------------------------------- |
+| Hook rápido / punchline        | 15–30s       | Pode ser mais curto se a ideia for completa |
+| Explicação / insight           | 30–60s       | Estender até 90s se o raciocínio exigir     |
+| Raciocínio profundo / história | 60–120s      | NUNCA cortar para encurtar; propor inteiro  |
 
 ### Fluxo Mandatório de Cortes Virais
 
 Se o usuário pedir para gerar cortes virais ou os melhores momentos, o agente **NÃO DEVE** executar o corte imediatamente. O agente deve seguir esta ordem restrita:
 
-1. **Apresentar a Proposta**: Mostrar ao usuário uma lista enumerada com os recortes identificados. Para cada corte, inclua:
+1. **Person Framing Analysis**: Executar a análise de 25 frames (seção acima) para determinar o melhor modo de formatação vertical.
+2. **Apresentar a Proposta**: Mostrar ao usuário uma lista enumerada com os recortes identificados. Para cada corte, inclua:
    - **Período**: (Ex: `00:01:20 a 00:01:55`)
-   - **Fala do Trecho (Transcript)**: Coloque a(s) frase(s) de impacto.
-   - **Por que é um bom corte**: Explique o "hook" ou valor.
-2. **Pedir Confirmação**: O agente deve perguntar: "Deseja que eu proceda com o corte e formatação vertical desses trechos? Aviso que este processo de recorte pode ser **demorado**, pois envolverá renderização de vídeo."
-3. **Execução (Apenas pós-sim)**: Somente se o usuário confirmar, o agente pode utilizar o script `clip_video.py` com a opção `--vertical` (que já aplica um fundo borrado 1080p30).
+   - **Fala do Trecho (Transcript)**: A(s) frase(s)-chave do trecho.
+   - **Por que é um bom corte**: Identificar qual pilar justifica (raciocínio completo, fala forte, hook viral).
+   - **Tags**: `[RACIOCÍNIO COMPLETO]`, `[FALA FORTE]`, `[HOOK VIRAL]` — um corte pode ter múltiplas tags.
+   - **Modo sugerido**: person-crop ou vertical (com base na framing analysis).
+3. **Pedir Confirmação**: O agente deve perguntar: "Deseja que eu proceda com o corte e formatação vertical desses trechos? Aviso que este processo de recorte pode ser **demorado**, pois envolverá renderização de vídeo."
+4. **Execução (Apenas pós-sim)**: Somente se o usuário confirmar, o agente pode utilizar o script `clip_video.py` com `--person-crop` ou `--vertical` conforme sugerido.
+
+### Qualidade Mínima por Corte
+
+Antes de incluir um corte na proposta, o agent deve passar por este checklist mental:
+
+- [ ] O trecho contém um raciocínio/ideia COMPLETO? (início + desenvolvimento + conclusão)
+- [ ] Se eu fosse um espectador aleatório, entenderia o contexto sem ver o vídeo inteiro?
+- [ ] O trecho tem pelo menos UM hook forte (visual, verbal ou emocional)?
+- [ ] A fala é clara e articulada neste trecho? (sem gaguejar excessivo, sem perda de foco)
+- [ ] Vale a pena compartilhar? Alguém mandaria isso para um amigo?
+
+Se qualquer item for "não", o agent deve descartar o trecho ou ajustar os timestamps para cobrir o raciocínio completo.
 
 ## Technical Context Guardrails (Bug Reports)
 
