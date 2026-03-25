@@ -370,10 +370,16 @@ O agent **JAMAIS** deve sugerir um corte que interrompa o raciocínio da pessoa 
 - Se não há como isolar o raciocínio completo em menos de 90 segundos, o agent deve informar isso ao usuário e propor o trecho inteiro.
 
 **Sinais de corte incompleto (PROIBIDO):**
+- Trecho termina com palavras de conexão suspensas: "...e...", "...mas...", "...então...", "...porque..."
 - Trecho termina com "...então o que acontece é..." ou "...por isso que eu acho que..."
 - Trecho começa no meio de uma explicação sem contexto
 - A pessoa está claramente construindo um argumento que não chega à conclusão no corte
 - O espectador ficaria pensando "e daí? o que ele quis dizer com isso?"
+
+> **Margem de Segurança (ASR Margin):** A transcrição de áudio (Whisper) mapeia as palavras, mas o limite do segundo exato no log muitas vezes corta o final da respiração ou última sílaba da pessoa. Para evitar cortes secos, o agent **SEMPRE deve adicionar 2 a 3 segundos de gordura** ao timestamp de término (`--end`) do corte escolhido. Se o transcript diz que a frase acabou em `00:01:20`, o comando de corte deve ir até `00:01:23`.
+> **Margem Inicial:** Da mesma forma, recue 1 ou 2 segundos no `--start` para não cortar a primeira sílaba.
+
+> **Dica Prática (Conjunções):** Se o trecho ideal terminar exatamente num "E..." ou "Mas...", o agent deve ajustar o timestamp final (recuando ainda mais para cortar ANTES da palavra de conexão, ou avançando para incluir a frase seguinte inteira).
 
 ### Pilar 2: Detecção de Fala de Qualidade
 

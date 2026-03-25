@@ -62,12 +62,12 @@ def _build_person_crop_filter(w, h, position):
     """
     crop_w = min(int(h * 9 / 16), w)
     if position == "left":
-        x_expr = f"min({w // 4},({w}-{crop_w}))"
+        x_val = min(w // 4, w - crop_w)
     elif position == "right":
-        x_expr = f"max({w} - {w // 4} - {crop_w}, 0)"
+        x_val = max(w - (w // 4) - crop_w, 0)
     else:
-        x_expr = f"({w}-{crop_w})/2"
-    return f"crop={crop_w}:{h}:{x_expr}:0,scale=1080:1920"
+        x_val = (w - crop_w) // 2
+    return f"crop={crop_w}:{h}:{x_val}:0,scale=1080:1920"
 
 
 def main():
