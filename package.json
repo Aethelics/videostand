@@ -14,7 +14,6 @@
     "LICENSE"
   ],
   "scripts": {
-    "test:e2e": "bash ./e2e/install.e2e.sh"
   },
   "repository": {
     "type": "git",

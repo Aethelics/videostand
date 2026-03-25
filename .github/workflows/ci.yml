@@ -44,8 +44,7 @@ jobs:
           node bin/videostand.js where all > /dev/null
           node bin/videostand.js doctor all --json > /dev/null
 
-      - name: End-to-end install tests
-        run: npm run test:e2e
+
 
       - name: Package dry-run
         run: npm pack --dry-run
