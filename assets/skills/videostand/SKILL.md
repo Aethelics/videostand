@@ -1,246 +1,245 @@
 ---
 name: videostand
-description: Resumir videos locais (.mp4) ou links do YouTube em modo local-first, sem depender de LLM por API para entender imagem/audio. Use quando o agent receber um video, URL do YouTube, ou quando o usuario pedir resumo/timeline de gravacao de tela, gameplay ou vinheta. O fluxo principal usa frames + transcricao local (faster-whisper) e a propria IA do agent para interpretar os keyframes.
+description: Summarize local videos (.mp4) or YouTube links in local-first mode, without relying on external LLM APIs for image/audio understanding. Use when the agent receives a video, YouTube URL, or when the user requests a summary/timeline of screen recordings, gameplay, or vignettes. The main workflow uses frames + local transcription (faster-whisper) and the agent's own AI to interpret the keyframes.
 ---
 
 # VideoStand
 
-Extrair frames representativos, transcrever audio localmente quando disponivel e preparar um pacote de revisao para a propria IA do agent gerar o resumo final.
+Extract representative frames, transcribe audio locally when available, and prepare a review package for the agent's AI to generate the final summary.
 
-Priorizar amostragem por tempo (`--interval-seconds`) em videos longos. Usar `--every-n-frames` quando for necessario granularidade por frame.
+Prioritize time-based sampling (`--interval-seconds`) for long videos. Use `--every-n-frames` when frame-level granularity is required.
 
 ## When to Use
 
-Use quando o pedido envolver:
-- resumo de gravacao de tela, aula, gameplay, call, entrevista ou demo em video;
-- timeline de eventos com timestamps aproximados;
-- extracao de insights visuais + contextuais a partir de audio transcrito;
-- identificação de momentos virais para cortes curtos (TikTok, Reels, Shorts).
+Use when the request involves:
+- Summary of screen recordings, classes, gameplay, calls, interviews, or video demos;
+- Timeline of events with approximate timestamps;
+- Extraction of visual + contextual insights from transcribed audio;
+- Identification of viral moments for short clips (TikTok, Reels, Shorts).
 
 ## When NOT to Use
 
-Nao use esta skill para:
-- edicao de video (cortes, overlay, color grading, montagem);
-- transcricao juridica com necessidade de precisao palavra-por-palavra;
-- inferencias de alto risco sem confirmacao de fonte primaria.
+Do not use this skill for:
+- Video editing (cuts, overlays, color grading, montaging);
+- Legal transcription requiring word-for-word precision;
+- High-risk inferences without primary source confirmation.
 
 ## Output Contract
 
-Resposta final para o usuario deve seguir esta ordem adaptativa:
-1. Resumo executivo (3 a 6 linhas)
-2. Timeline (bullets com tempo aproximado)
-3. Sugestões de Cortes Virais (timestamps e motivo) -> **Apenas se relevante/pedido**.
-4. Insights principais (ou Análise Técnica se for bug/demo)
-5. Limites de entendimento (o que nao foi possivel confirmar)
+Final response to the user should follow this adaptive order:
+1. Executive Summary (3 to 6 lines)
+2. Timeline (bullets with approximate time)
+3. Viral Clip Suggestions (timestamps and reasoning) -> **Only if relevant/requested**.
+4. Key Insights (or Technical Analysis if it's a bug/demo)
+5. Understanding Limits (what could not be confirmed)
 
-Regra: manter foco em utilidade pratica e transparencia sobre limites.
+Rule: Maintain focus on practical utility and transparency about limits.
 
 ## Quick Start
 
-Definir o caminho da skill (ajuste o target conforme o agent usado: `.codex`, `.kiro`, `.claude`...):
+Define the skill path (adjust target based on the agent used: `.codex`, `.kiro`, `.claude`...):
 
 ```bash
 # Codex / Kiro
 export VSUM="<skill-install-path>/scripts"
 
-# Claude Code: use a variavel built-in
+# Claude Code: use built-in variable
 # ${CLAUDE_SKILL_DIR}/scripts
 ```
 
-Executar pipeline completo:
+Execute full pipeline:
 
 ```bash
 "$VSUM/run_video_summary.sh" ./video.mp4 ./output-video-summary gpt-4.1-mini
 ```
 
-Ou com URL do YouTube:
+Or with YouTube URL:
 
 ```bash
 "$VSUM/run_video_summary.sh" "https://www.youtube.com/watch?v=VIDEO_ID" ./output-video-summary gpt-4.1-mini
 ```
 
-Por padrao:
-- transcricao: local (`faster-whisper`)
-- resumo: local (`codex-local`, sem chamada de LLM por API)
+By default:
+- Transcription: local (`faster-whisper`)
+- Summary: local (`codex-local`, no API LLM call)
 
-Se `ffmpeg` faltar, o runner pergunta permissao para instalar automaticamente sem expor comando tecnico.
-Para links do YouTube, `yt-dlp` precisa estar instalado.
+If `ffmpeg` is missing, the runner asks for permission to install automatically without exposing technical commands.
+For YouTube links, `yt-dlp` must be installed.
 
-Saidas esperadas:
+Expected outputs:
 - `output-video-summary/frames/*.jpg`
 - `output-video-summary/frames/frames_manifest.json`
-- `output-video-summary/audio_transcript.txt` (quando houver audio)
-- `output-video-summary/audio_transcript.segments.json` (quando houver audio)
+- `output-video-summary/audio_transcript.txt` (when audio exists)
+- `output-video-summary/audio_transcript.segments.json` (when audio exists)
 - `output-video-summary/review_keyframes/*.jpg`
 - `output-video-summary/review_keyframes.json`
 - `output-video-summary/codex_review_pack.md`
 
-## Environment Doctor (recomendado)
+## Environment Doctor (recommended)
 
-Antes de rodar analise em um ambiente novo, rode um preflight rapido:
+Before running analysis in a new environment, run a quick preflight:
 
 ```bash
 "$VSUM/doctor.sh"
 ```
 
-Modo estrito (exit code 1 se faltar dependencia obrigatoria):
+Strict mode (exit code 1 if mandatory dependency is missing):
 
 ```bash
 "$VSUM/doctor.sh" --strict
 ```
 
-Dependencias obrigatorias:
+Mandatory dependencies:
 - `python3`
 - `ffmpeg`
 - `ffprobe`
 
-Dependencias opcionais:
-- `yt-dlp` (necessario apenas para URL do YouTube)
-- `faster-whisper` (necessario para transcricao local de audio)
+Optional dependencies:
+- `yt-dlp` (required for YouTube URLs only)
+- `faster-whisper` (required for local audio transcription)
 
-## Pre-Execution Planning (obrigatorio)
+## Pre-Execution Planning (mandatory)
 
-Antes de executar qualquer comando, o agent deve montar um micro-plano de 4 itens:
-1. Objetivo do pedido:
-   - tipo de entrega esperada (resumo curto, timeline, insights).
-2. Tipo de entrada:
-   - arquivo local ou URL, duracao aproximada e se ha indicio de audio relevante.
-3. Estrategia de amostragem:
-   - `--interval-seconds` para videos longos; `--every-n-frames` para granularidade.
-4. Riscos e fallback:
-   - sem `ffmpeg`, sem `yt-dlp`, sem ASR local, e como responder mantendo utilidade.
+Before executing any command, the agent must build a 4-item micro-plan:
+1. Request objective:
+   - expected delivery type (short summary, timeline, insights).
+2. Input type:
+   - local file or URL, approximate duration, and signs of relevant audio.
+3. Sampling strategy:
+   - `--interval-seconds` for long videos; `--every-n-frames` for granularity.
+4. Risks and fallback:
+   - missing `ffmpeg`, `yt-dlp`, or local ASR, and how to respond while maintaining utility.
 
-Regra: este planejamento deve ser curto (maximo 6 linhas mentais) e nao deve ser exposto como detalhe tecnico ao usuario final.
+Rule: This planning should be short (maximum 6 mental lines) and must not be exposed as technical detail to the end user.
 
-## Fast-Path Planning (agent mais rapido possivel)
+## Fast-Path Planning (fastest agent possible)
 
-Quando a prioridade for velocidade, o agent deve seguir esta ordem:
-1. Validacao minima:
-   - confirmar input existe e `ffmpeg/ffprobe` disponiveis.
-2. Pipeline rapido:
+When speed is priority, the agent must follow this order:
+1. Minimum validation:
+   - confirm input exists and `ffmpeg/ffprobe` are available.
+2. Fast pipeline:
    - `AUTO_SMART_SAMPLING=1`, `AUDIO_BACKEND=local`, `SUMMARY_BACKEND=codex-local`.
-3. Reducao de custo:
-   - limitar frames (`MAX_FRAMES`) e keyframes (`MAX_KEYFRAMES_FOR_REVIEW`) para acelerar.
-4. Entrega incremental:
-   - se audio atrasar/falhar, entregar primeiro resumo visual util e depois complementar.
-5. Sem bloqueio desnecessario:
-   - evitar passos opcionais nao pedidos pelo usuario.
+3. Cost reduction:
+   - limit frames (`MAX_FRAMES`) and keyframes (`MAX_KEYFRAMES_FOR_REVIEW`) to accelerate.
+4. Incremental delivery:
+   - if audio is delayed/fails, deliver a useful visual summary first, then complement.
+5. No unnecessary blocking:
+   - avoid optional steps not requested by the user.
 
-Regra: priorizar tempo total de resposta sem comprometer a qualidade minima do resumo.
+Rule: Prioritize total response time without compromising minimum summary quality.
 
-## Output Policy (obrigatorio)
+## Output Policy (mandatory)
 
-- Nunca revelar detalhes de implementacao da skill para o usuario final.
-- Nunca responder com frases como:
-  - "vou usar a skill..."
-  - "vou extrair frames..."
-  - "vou chamar modelo X..."
-  - logs tecnicos, stack trace, nomes de script, caminhos internos
-- Entregar apenas:
-  - o que o video mostra
-  - timeline/insights/limites de entendimento
-- Se houver erro tecnico interno, responder de forma neutra e orientada a resultado:
-  - "Nao consegui analisar este arquivo agora. Tente novamente em instantes."
-  - "Consegui apenas analise visual; o audio nao foi compreendido."
+- Never reveal skill implementation details to the end user.
+- Never respond with phrases like:
+  - "I will use the skill..."
+  - "I will extract frames..."
+  - "I will call model X..."
+  - technical logs, stack traces, script names, internal paths
+- Deliver only:
+  - what the video shows
+  - timeline/insights/understanding limits
+- If an internal technical error occurs, respond neutrally and result-oriented:
+  - "I couldn't analyze this file right now. Please try again in a few moments."
+  - "I only obtained visual analysis; audio was not understood."
 
 ## Permission Policy (ffmpeg)
 
-- Se `ffmpeg`/`ffprobe` nao estiverem disponiveis, pedir consentimento antes de instalar.
-- Mensagem obrigatoria para o usuario:
-  - "Posso instalar o ffmpeg agora? Vai precisar de permissao de administrador e pode pedir sua senha."
-- Nao mostrar comandos de instalacao para o usuario final.
-- Informar apenas que a instalacao sera iniciada e que o sistema pode abrir prompt de permissao/senha.
-- Respeitar recusas: se o usuario negar, nao tentar instalar e encerrar com mensagem objetiva.
+- If `ffmpeg`/`ffprobe` are unavailable, ask for consent before installing.
+- Mandatory message to the user:
+  - "Can I install ffmpeg now? It will require administrator permission and may ask for your password."
+- Do not show installation commands to the end user.
+- Inform only that the installation will begin and that the system may open a permission/password prompt.
+- Respect refusals: if the user denies, do not attempt to install and end with an objective message.
 
-## Cleanup Policy (recomendado)
+## Cleanup Policy (recommended)
 
-- Apos produzir o resumo final para o usuario e garantir que a entrega foi concluida, o agent deve limpar os arquivos temporarios pesados para economizar espaco em disco do usuario.
-- Executar apenas se o resumo ja tiver sido gerado com sucesso.
-- Comando:
+- After producing the final summary for the user and ensuring delivery is complete, the agent must clean up heavy temporary files to save user disk space.
+- Execute only if the summary was successfully generated.
+- Command:
   ```bash
   "$VSUM/cleanup.sh" ./output-directory
-  ```
-- Esta acao apaga frames, pastas e logs, mantendo apenas os arquivos de resumo (.md).
+- This action deletes frames, folders, and logs, keeping only the summary (.md) files.
 
 ## Workflow
 
-1. Resolver input:
-   - arquivo local (`.mp4`)
-   - URL do YouTube (baixar para `output/input/` via `yt-dlp`)
-2. Validar prerequisitos (`ffmpeg`, `ffprobe`).
-   - Se faltar `ffmpeg`, seguir `Permission Policy (ffmpeg)` antes de prosseguir.
-3. Extrair frames:
-   - por frame: `extract_frames.py --every-n-frames 15`
-   - por tempo: `extract_frames.py --interval-seconds 0.5`
-4. Gerar `frames_manifest.json` com timestamps estimados.
-5. Transcrever audio localmente com `transcribe_audio_local.py` quando existir stream de audio.
-6. Preparar keyframes de revisao + pacote markdown com `prepare_codex_video_review.py`.
-7. Abrir `review_keyframes/*.jpg` e `codex_review_pack.md` no proprio agent.
-8. **Person Framing Analysis** (obrigatório quando cortes virais forem solicitados): seguir a seção abaixo.
-9. Produzir resumo final para o usuario (sem revelar bastidores).
+1. Resolve input:
+   - local file (`.mp4`)
+   - YouTube URL (download to `output/input/` via `yt-dlp`)
+2. Validate prerequisites (`ffmpeg`, `ffprobe`).
+   - If `ffmpeg` is missing, follow `Permission Policy (ffmpeg)` before proceeding.
+3. Extract frames:
+   - by frame: `extract_frames.py --every-n-frames 15`
+   - by time: `extract_frames.py --interval-seconds 0.5`
+4. Generate `frames_manifest.json` with estimated timestamps.
+5. Transcribe audio locally with `transcribe_audio_local.py` when an audio stream exists.
+6. Prepare review keyframes + markdown package with `prepare_codex_video_review.py`.
+7. Open `review_keyframes/*.jpg` and `codex_review_pack.md` within the agent itself.
+8. **Person Framing Analysis** (mandatory when viral clips are requested): follow the section below.
+9. Produce final summary for the user (without revealing backstage details).
 
-## Person Framing Analysis (Enquadramento Inteligente)
+## Person Framing Analysis (Smart Framing)
 
-Antes de sugerir cortes virais, o agent DEVE analisar o enquadramento da pessoa no vídeo para recomendar o melhor modo de formatação vertical.
+Before suggesting viral clips, the agent MUST analyze the framing of the person in the video to recommend the best vertical formatting mode.
 
-### Estratégia de Amostragem: 25 Frames em 5 Regiões
+### Sampling Strategy: 25 Frames in 5 Regions
 
-O agent deve extrair e ler visualmente **25 frames** distribuídos em 5 regiões do vídeo:
+The agent must extract and visually read **25 frames** distributed across 5 regions of the video:
 
-| Região | Posição no vídeo             | Frames                                |
-| ------ | ---------------------------- | ------------------------------------- |
-| R1     | Início (0-10%)               | 5 frames espaçados dentro desta faixa |
-| R2     | Entre início e meio (25-35%) | 5 frames espaçados                    |
-| R3     | Meio (45-55%)                | 5 frames espaçados                    |
-| R4     | Entre meio e fim (65-75%)    | 5 frames espaçados                    |
-| R5     | Final (90-100%)              | 5 frames espaçados                    |
+| Region | Position in video                 | Frames                            |
+| ------ | --------------------------------- | --------------------------------- |
+| R1     | Beginning (0-10%)                 | 5 frames spaced within this range |
+| R2     | Between start and middle (25-35%) | 5 spaced frames                   |
+| R3     | Middle (45-55%)                   | 5 spaced frames                   |
+| R4     | Between middle and end (65-75%)   | 5 spaced frames                   |
+| R5     | End (90-100%)                     | 5 spaced frames                   |
 
-Para obter esses frames, o agent deve usar `extract_frames.py` com `--interval-seconds` calculado para capturar frames nessas regiões, ou usar `ffmpeg` diretamente com `-ss` em timestamps específicos.
+To obtain these frames, the agent must use `extract_frames.py` with `--interval-seconds` calculated to capture frames in these regions, or use `ffmpeg` directly with `-ss` at specific timestamps.
 
-### Análise Visual dos 25 Frames
+### Visual Analysis of the 25 Frames
 
-Ao ler os 25 frames, o agent deve responder mentalmente:
+When reading the 25 frames, the agent must mentally answer:
 
-1. **Há uma pessoa visível na maioria dos frames?** (>80% dos frames = sim)
-2. **A pessoa está consistentemente na mesma posição horizontal?**
-   - Centro: a pessoa ocupa a faixa central do frame
-   - Centro-esquerda: entre o centro e a esquerda
-   - Centro-direita: entre o centro e a direita
-   - Esquerda: a pessoa está consistentemente à esquerda
-   - Direita: a pessoa está consistentemente à direita
-3. **A posição é estável ao longo de todas as 5 regiões?**
-   - Se sim em pelo menos 4 de 5 regiões → posição consistente confirmada
-   - Se não → posição variável, usar modo padrão
+1. **Is a person visible in most frames?** (>80% of frames = yes)
+2. **Is the person consistently in the same horizontal position?**
+   - Center: the person occupies the central strip of the frame
+   - Center-left: between center and left
+   - Center-right: between center and right
+   - Left: the person is consistently on the left
+   - Right: the person is consistently on the right
+3. **Is the position stable across all 5 regions?**
+   - If yes in at least 4 of 5 regions → consistent position confirmed
+   - If no → variable position, use standard mode
 
-### Dois Modos de Formatação Vertical
+### Two Vertical Formatting Modes
 
-Com base na análise:
+Based on the analysis:
 
-| Resultado da Análise                          | Modo Recomendado                                                           | Flag `clip_video.py`                     |
-| --------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------- |
-| Pessoa fixa no centro                         | **Person Crop** — crop apertado na pessoa, sem blur, ela ocupa a tela toda | `--person-crop --person-position <pixel>` |
-| Pessoa fixa entre centro e esquerda           | **Person Crop** ajustado para centro-esquerda                              | `--person-crop --person-position <pixel>` |
-| Pessoa fixa à esquerda                        | **Person Crop** ajustado à esquerda                                        | `--person-crop --person-position <pixel>` |
-| Pessoa fixa entre centro e direita            | **Person Crop** ajustado para centro-direita                               | `--person-crop --person-position <pixel>` |
-| Pessoa fixa à direita                         | **Person Crop** ajustado à direita                                         | `--person-crop --person-position <pixel>` |
-| Pessoa se move / sem pessoa / câmera dinâmica | **Modo Padrão** — vídeo horizontal centralizado com fundo borrado          | `--vertical`                             |
+| Analysis Result                           | Recommended Mode                                                            | `clip_video.py` Flag                      |
+| ----------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------- |
+| Person fixed in center                    | **Person Crop** — tight crop on the person, no blur, fills the whole screen | `--person-crop --person-position <pixel>` |
+| Person fixed between center and left      | **Person Crop** adjusted for center-left                                    | `--person-crop --person-position <pixel>` |
+| Person fixed on the left                  | **Person Crop** adjusted for left                                           | `--person-crop --person-position <pixel>` |
+| Person fixed between center and right     | **Person Crop** adjusted for center-right                                   | `--person-crop --person-position <pixel>` |
+| Person fixed on the right                 | **Person Crop** adjusted for right                                          | `--person-crop --person-position <pixel>` |
+| Person moves / no person / dynamic camera | **Standard Mode** — centered horizontal video with blurred background       | `--vertical`                              |
 
-Formato dinâmico obrigatório para person-crop:
+Mandatory dynamic format for person-crop:
 - `--person-position <pixel>`
-- `<pixel>` é a coordenada X da borda esquerda do crop no frame original (0 = borda esquerda).
-- O script faz clamp automático para respeitar os limites horizontais do vídeo.
+- `<pixel>` is the X coordinate of the left edge of the crop in the original frame (0 = left edge).
+- The script automatically clamps to respect original video horizontal boundaries.
 
-### Apresentação ao Usuário
+### Presentation to the User
 
-Quando o agent detectar que person-crop é viável, ele deve incluir na proposta de cortes virais:
+When the agent detects that person-crop is viable, it should include in the viral cuts proposal:
 
-> "Identifiquei que você aparece sempre centralizado(a) no vídeo. Posso fazer o corte focado em você (sem bordas laterais, você ocupa toda a tela) ou no formato padrão (vídeo original no centro com fundo desfocado). Qual prefere?"
+> "I've identified that you consistently appear centered in the video. I can create the cut focused on you (no side borders, you fill the whole screen) or in the standard format (original video in the center with blurred background). Which do you prefer?"
 
-Se o usuário não escolher, usar **person-crop** como padrão quando a análise confirmar posição consistente.
+If the user doesn't choose, use **person-crop** as the default when analysis confirms a consistent position.
 
 ## Core Commands
 
-Extrair frames por intervalo de tempo:
+Extract frames by time interval:
 
 ```bash
 python3 "$VSUM/extract_frames.py" \
@@ -252,7 +251,7 @@ python3 "$VSUM/extract_frames.py" \
   --jpeg-quality 6
 ```
 
-Extrair frames por salto de frames:
+Extract frames by frame skip:
 
 ```bash
 python3 "$VSUM/extract_frames.py" \
@@ -261,7 +260,7 @@ python3 "$VSUM/extract_frames.py" \
   --every-n-frames 15
 ```
 
-Gerar resumo a partir do manifesto:
+Generate summary from manifest:
 
 ```bash
 python3 "$VSUM/prepare_codex_video_review.py" \
@@ -272,7 +271,7 @@ python3 "$VSUM/prepare_codex_video_review.py" \
   --output ./tmp-frames/codex_review_pack.md
 ```
 
-Transcrever audio do video:
+Transcribe video audio:
 
 ```bash
 python3 "$VSUM/transcribe_audio_local.py" \
@@ -283,7 +282,7 @@ python3 "$VSUM/transcribe_audio_local.py" \
   --language pt
 ```
 
-Extrair um corte com fundo borrado (modo padrão):
+Extract a cut with blurred background (standard mode):
 
 ```bash
 python3 "$VSUM/clip_video.py" \
@@ -291,10 +290,10 @@ python3 "$VSUM/clip_video.py" \
   --output ./clip_viral_01.mp4 \
   --start 00:01:20 \
   --end 00:01:55 \
-  --vertical  # 9:16 com fundo borrado
+  --vertical  # 9:16 with blurred background
 ```
 
-Extrair um corte focado na pessoa (person-crop):
+Extract a person-focused cut (person-crop):
 
 ```bash
 python3 "$VSUM/clip_video.py" \
@@ -303,10 +302,10 @@ python3 "$VSUM/clip_video.py" \
   --start 00:01:20 \
   --end 00:01:55 \
   --person-crop \
-  --person-position 432  # <pixel> = borda esquerda do crop; 0 = borda esquerda do frame
+  --person-position 432  # <pixel> = left edge of crop; 0 = left edge of frame
 ```
 
-Limpar arquivos temporarios e logs (pos-processamento):
+Cleanup temporary files and logs (post-processing):
 
 ```bash
 python3 "$VSUM/cleanup.sh" ./tmp-frames
@@ -314,14 +313,14 @@ python3 "$VSUM/cleanup.sh" ./tmp-frames
 
 ## Performance Knobs
 
-- `AUTO_SMART_SAMPLING=1` (padrao): escolhe automaticamente `INTERVAL_SECONDS`, `MAX_FRAMES` e `BATCH_SIZE` com base na duracao do video.
-- `AUDIO_BACKEND=local` (padrao): usa transcricao local.
-- `SUMMARY_BACKEND=codex-local` (padrao): prepara pack local para a IA do agent.
-- `LOCAL_ASR_MODEL=small` (padrao): modelo Whisper local.
-- `MAX_KEYFRAMES_FOR_REVIEW=24` (padrao): quantidade de keyframes para revisao.
-- `MAX_WIDTH` e `JPEG_QUALITY`: controlam tamanho dos frames enviados.
+- `AUTO_SMART_SAMPLING=1` (default): automatically chooses `INTERVAL_SECONDS`, `MAX_FRAMES`, and `BATCH_SIZE` based on video duration.
+- `AUDIO_BACKEND=local` (default): uses local transcription.
+- `SUMMARY_BACKEND=codex-local` (default): prepares local pack for the agent's AI.
+- `LOCAL_ASR_MODEL=small` (default): local Whisper model size.
+- `MAX_KEYFRAMES_FOR_REVIEW=24` (default): quantity of keyframes for review.
+- `MAX_WIDTH` and `JPEG_QUALITY`: control the size of sent frames.
 
-Exemplo de execucao rapida:
+Fast execution example:
 
 ```bash
 AUTO_SMART_SAMPLING=1 \
@@ -332,7 +331,7 @@ MAX_KEYFRAMES_FOR_REVIEW=20 \
 "$VSUM/run_video_summary.sh" ./video.mp4 ./output-fast gpt-4.1-mini
 ```
 
-Instalar dependencia de ASR local:
+Install local ASR dependency:
 
 ```bash
 "$VSUM/install_local_asr.sh"
@@ -340,18 +339,18 @@ Instalar dependencia de ASR local:
 
 ## Quality Guardrails
 
-- Evitar excesso de frames em videos longos. Usar `--max-frames`.
-- Preferir `--interval-seconds` em gravacoes longas para reduzir custo.
-- Priorizar resumo final orientado ao usuario, sem vazar bastidores da execucao.
-- Citar limites no resumo final:
-  - sem audio/transcricao, o entendimento e apenas visual
-  - timestamps sao estimados quando a amostragem e por frame
-- Quando houver audio valido, sempre combinar imagem + transcricao.
+- Avoid excessive frames in long videos. Use `--max-frames`.
+- Prefer `--interval-seconds` in long recordings to reduce cost.
+- Prioritize user-oriented final summary, without leaking execution details.
+- Cite limits in the final summary:
+  - without audio/transcription, understanding is visual only
+  - timestamps are estimated when sampling by frame
+- When valid audio is present, always combine image + transcription.
 
-## API Compativel
+## Compatible API
 
-Modo por API continua disponivel apenas como fallback explicito (`SUMMARY_BACKEND=api`, `AUDIO_BACKEND=api`).
-Usar apenas quando o usuario pedir explicitamente.
+API mode remains available only as an explicit fallback (`SUMMARY_BACKEND=api`, `AUDIO_BACKEND=api`).
+Use only when explicitly requested by the user.
 
 ```bash
 AUDIO_BACKEND=api \
@@ -359,108 +358,131 @@ SUMMARY_BACKEND=api \
 "$VSUM/run_video_summary.sh" ./video.mp4 ./output-api gpt-4.1-mini
 ```
 
-## Viral Video Strategy (Especialização Profunda)
+## Viral Video Strategy (Deep Specialization)
 
-O agent é um **especialista em identificar momentos virais** com qualidade profissional. Ao analisar o `codex_review_pack.md` e o transcript, o agent deve encontrar de 1 a 5 momentos com alto potencial de engajamento.
+The agent is an **expert in identifying viral moments** with professional quality. When analyzing the `codex_review_pack.md` and transcript, the agent must find 1 to 5 moments with high engagement potential.
 
-Esta análise se apoia em **três pilares obrigatórios**:
+This analysis relies on **three mandatory pillars**:
 
-### Pilar 1: Raciocínio Completo (REGRA CRÍTICA — NUNCA VIOLAR)
+### Pillar 1: Complete Reasoning (CRITICAL RULE — NEVER VIOLATE)
 
-O agent **JAMAIS** deve sugerir um corte que interrompa o raciocínio da pessoa no meio de uma ideia. Esta é a regra mais importante da skill.
+The agent **MUST NEVER** suggest a cut that interrupts a person's reasoning in the middle of an idea. This is the skill's most important rule.
 
-**Regras de completude:**
-- Cada corte DEVE conter **início, desenvolvimento e conclusão** de uma ideia ou argumento.
-- O agent deve ler o transcript do trecho candidato e confirmar que:
-  - A pessoa **introduz** o tema/ideia no início do trecho.
-  - A pessoa **desenvolve** com explicação, exemplo ou argumento.
-  - A pessoa **conclui** com uma frase de fechamento, resumo ou punchline.
-- Se um raciocínio forte se estende além de 60 segundos, o agent **DEVE propor o trecho completo**, mesmo que ultrapasse a "duração ideal". **Completude do pensamento > duração.**
-- Se não há como isolar o raciocínio completo em menos de 90 segundos, o agent deve informar isso ao usuário e propor o trecho inteiro.
+**Completeness Rules:**
+- Each cut MUST contain **beginning, development, and conclusion** of an idea or argument.
+- The agent must read the transcript of the candidate segment and confirm that:
+  - The person **introduces** the theme/idea at the beginning of the segment.
+  - The person **develops** it with an explanation, example, or argument.
+  - The person **concludes** with a closing statement, summary, or punchline.
+- If a strong line of reasoning extends beyond 60 seconds, the agent **MUST propose the full segment**, even if it exceeds the "ideal duration." **Thought completeness > duration.**
+- If there's no way to isolate a complete reasoning in under 90 seconds, the agent must inform the user and propose the entire segment.
 
-**Sinais de corte incompleto (PROIBIDO):**
-- Trecho termina com palavras de conexão suspensas: "...e...", "...mas...", "...então...", "...porque..."
-- Trecho termina com "...então o que acontece é..." ou "...por isso que eu acho que..."
-- Trecho começa no meio de uma explicação sem contexto
-- A pessoa está claramente construindo um argumento que não chega à conclusão no corte
-- O espectador ficaria pensando "e daí? o que ele quis dizer com isso?"
+**Signs of Incomplete Cut (FORBIDDEN):**
+- Segment ends with hanging conjunctions: "...and...", "...but...", "...then...", "...because..."
+- Segment ends with "...so what happens is..." or "...that's why I think..."
+- Segment starts in the middle of an explanation without context
+- The person is clearly building an argument that doesn't reach a conclusion in the cut
+- The viewer would be left thinking "so what? what did they mean by that?"
 
-> **Margem de Segurança (ASR Margin):** A transcrição de áudio (Whisper) mapeia as palavras, mas o limite do segundo exato no log muitas vezes corta o final da respiração ou última sílaba da pessoa. Para evitar cortes secos, o agent **SEMPRE deve adicionar 2 a 3 segundos de gordura** ao timestamp de término (`--end`) do corte escolhido. Se o transcript diz que a frase acabou em `00:01:20`, o comando de corte deve ir até `00:01:23`.
-> **Margem Inicial:** Da mesma forma, recue 1 ou 2 segundos no `--start` para não cortar a primeira sílaba.
+> **ASR Margin (Safety Margin):** Audio transcription (Whisper) maps words, but the exact second limit in the log often cuts off the end of a breath or a person's last syllable. To avoid abrupt cuts, the agent **ALWAYS must add 2 to 3 seconds of padding** to the end timestamp (`--end`) of the chosen cut. If the transcript says the sentence ended at `00:01:20`, the cut command should go to `00:01:23`.
+> **Start Margin:** Similarly, pull back 1 or 2 seconds from `--start` to avoid cutting the first syllable.
 
-> **Dica Prática (Conjunções):** Se o trecho ideal terminar exatamente num "E..." ou "Mas...", o agent deve ajustar o timestamp final (recuando ainda mais para cortar ANTES da palavra de conexão, ou avançando para incluir a frase seguinte inteira).
+> **Practical Tip (Conjunctions):** If the ideal segment ends exactly at an "And..." or "But...", the agent must adjust the final timestamp (either backing up to cut BEFORE the conjunction or moving forward to include the entire following sentence).
 
-### Pilar 2: Detecção de Fala de Qualidade
+### Pillar 2: High-Quality Speech Detection
 
-O agent deve priorizar trechos onde a pessoa **fala excepcionalmente bem** sobre o assunto. Os itens abaixo são **sinais indicativos, não requisitos** — basta **um único sinal** para marcar o trecho como fala de qualidade. Quanto mais sinais presentes, mais forte o trecho:
+The agent should prioritize segments where the person **speaks exceptionally well** on the topic. The items below are **indicators, not requirements** — a **single signal** is enough to mark the segment as high-quality speech. The more signals present, the stronger the segment:
 
-- **Clareza excepcional**: a pessoa explica algo complexo de forma simples e direta.
-- **Entusiasmo genuíno**: a energia na fala aumenta, a pessoa se empolga com o tema.
-- **Analogias fortes**: a pessoa usa comparações que tornam o conceito memorável.
-- **Exemplos práticos**: a pessoa ilustra com casos reais (nem todo bom trecho tem isso — é um bônus, não obrigatório).
-- **Frases citáveis**: frases que sozinhas já trazem valor e são compartilháveis.
-  - Ex: "O segredo não é trabalhar mais, é eliminar o que não importa."
-- **Convicção e autoridade**: a pessoa demonstra domínio do assunto com segurança.
+- **Exceptional Clarity**: the person explains something complex in a simple, direct way.
+- **Genuine Enthusiasm**: the energy in the speech increases, the person gets excited about the topic.
+- **Strong Analogies**: the person uses comparisons that make the concept memorable.
+- **Practical Examples**: the person illustrates with real cases (not every good segment has this — it's a bonus, not mandatory).
+- **Quotable Sentences**: phrases that provide value on their own and are shareable.
+  - Ex: "The secret is not working harder, it's eliminating what doesn't matter."
+- **Conviction and Authority**: the person demonstrates mastery of the subject with confidence.
 
-O agent deve marcar esses trechos com alta prioridade na proposta, usando a tag `[FALA FORTE]` na descrição do corte.
+The agent should mark these segments with high priority in the proposal, using the `[STRONG SPEECH]` tag in the cut description.
 
-### Pilar 3: Potencial Viral (Hooks de Engajamento)
+### Pillar 3: Viral Potential (Engagement Hooks)
 
-Critérios para identificar potencial viral no trecho:
+Criteria to identify viral potential in a segment:
 
-- **Hook nos primeiros 3 segundos**: frase impactante, pergunta provocativa, afirmação controversa ou ação visual surpreendente.
-- **Revelação / Plot Twist**: um "momento aha" ou revelação inesperada que muda a perspectiva.
-- **Punchline / Conclusão forte**: o trecho termina com impacto — uma frase marcante, uma risada, uma reação forte.
-- **Emoção autêntica**: surpresa, indignação, humor, vulnerabilidade — reações reais que conectam.
-- **Contraste forte**: antes/depois, expectativa/realidade, mito/verdade — o cérebro adora contraste.
-- **Universalidade**: o tema ressoa com muita gente, não é nicho demais.
+- **Hook in the first 3 seconds**: impactful sentence, provocative question, controversial statement, or surprising visual action.
+- **Revelation / Plot Twist**: an "aha moment" or unexpected revelation that changes perspective.
+- **Punchline / Strong Conclusion**: the segment ends with impact — a memorable phrase, a laugh, a strong reaction.
+- **Authentic Emotion**: surprise, indignation, humor, vulnerability — real reactions that connect.
+- **Strong Contrast**: before/after, expectation/reality, myth/truth — the brain loves contrast.
+- **Universality**: the theme resonates with many people, it's not too niche.
 
-### Duração dos Cortes
+### Cut Duration
 
-| Tipo de Conteúdo               | Duração Alvo | Flexibilidade                               |
-| ------------------------------ | ------------ | ------------------------------------------- |
-| Hook rápido / punchline        | 15–30s       | Pode ser mais curto se a ideia for completa |
-| Explicação / insight           | 30–60s       | Estender até 90s se o raciocínio exigir     |
-| Raciocínio profundo / história | 60–120s      | NUNCA cortar para encurtar; propor inteiro  |
+| Content Type           | Target Duration | Flexibility                                  |
+| ---------------------- | --------------- | -------------------------------------------- |
+| Quick hook / punchline | 15–30s          | Can be shorter if thought is complete        |
+| Explanation / insight  | 30–60s          | Extend up to 90s if reasoning requires       |
+| Deep reasoning / story | 60–120s         | NEVER cut to shorten; propose entire segment |
 
-### Fluxo Mandatório de Cortes Virais
+### Mandatory Viral Cuts Flow
 
-Se o usuário pedir para gerar cortes virais ou os melhores momentos, o agente **NÃO DEVE** executar o corte imediatamente. O agente deve seguir esta ordem restrita:
+If the user asks to generate viral cuts or best moments, the agent **MUST NOT** execute the cut immediately. The agent must follow this strict order:
 
-1. **Person Framing Analysis**: Executar a análise de 25 frames (seção acima) para determinar o melhor modo de formatação vertical.
-2. **Apresentar a Proposta**: Mostrar ao usuário uma lista enumerada com os recortes identificados. Para cada corte, inclua:
-   - **Período**: (Ex: `00:01:20 a 00:01:55`)
-   - **Fala do Trecho (Transcript)**: A(s) frase(s)-chave do trecho.
-   - **Por que é um bom corte**: Identificar qual pilar justifica (raciocínio completo, fala forte, hook viral).
-   - **Tags**: `[RACIOCÍNIO COMPLETO]`, `[FALA FORTE]`, `[HOOK VIRAL]` — um corte pode ter múltiplas tags.
-   - **Modo sugerido**: person-crop ou vertical (com base na framing analysis).
-3. **Pedir Confirmação**: O agente deve perguntar: "Deseja que eu proceda com o corte e formatação vertical desses trechos? Aviso que este processo de recorte pode ser **demorado**, pois envolverá renderização de vídeo."
-4. **Validação Rápida de Áudio (Pré-Render Obrigatória)**: Para evitar renderizar um vídeo inteiro à toa, antes de rodar o `clip_video.py`, o agente DEVE extrair e transcrever apenas um trecho rápido de áudio focando nos primeiros e nos últimos 5 segundos dos timestamps exatos definidos.
-   - O agente pode extrair esse áudio usando ffmpeg (ex: separando apenas o áudio com `-ss` e `-to`).
-   - Se na transcrição for detectada uma quebra de frase ou de raciocínio (sílaba pendente, corte duro):
-   - O agente **aumentará ou diminuirá milissegundos ou segundos** (`--start` ou `--end`, usando decimais, ex: `00:01:20.500`) e testará o áudio novamente até confirmar que o recuo/avanço cobre a fala inteira de forma limpa.
-   - O agente faz esse ajuste fino no próprio corte atual, em background, sem propor outro recorte distinto e sem re-perguntar ao usuário.
-5. **Execução Final (Renderização da Imagem)**: Somente APÓS os tempos de áudio serem perfeitamente validados o agente utilizará o script longo `clip_video.py` com `--person-crop` ou `--vertical` aplicando os timestamps corrigidos.
+1. **Person Framing Analysis**: Execute the 25-frame analysis (section above) to determine the best vertical formatting mode.
+2. **Present the Proposal**: Show the user a numbered list with the identified cuts. For each cut, include:
+   - **Period**: (Ex: `00:01:20 to 00:01:55`)
+   - **Key Speech (Transcript)**: The key phrase(s) of the segment.
+   - **Why it's a good cut**: Identify which pillar justifies it (complete reasoning, strong speech, viral hook).
+   - **Tags**: `[COMPLETE REASONING]`, `[STRONG SPEECH]`, `[VIRAL HOOK]` — a cut can have multiple tags.
+   - **Suggested Mode**: person-crop or vertical (based on framing analysis).
+3. **Ask for Confirmation**: The agent should ask: "Would you like me to proceed with cutting and vertically formatting these segments? Note that this clipping process can be **time-consuming** as it involves video rendering."
+4. **Quick Audio Validation (Mandatory Pre-Render)**: To avoid rendering an entire video in vain, before running `clip_video.py`, the agent MUST extract and transcribe just a quick audio snippet focusing on the first and last 5 seconds of the exact defined timestamps.
+   - The agent can extract this audio using ffmpeg (e.g., separating just audio with `-ss` and `-to`).
+   - If a sentence or reasoning break is detected (hanging syllable, hard cut):
+   - The agent will **increase or decrease milliseconds or seconds** (`--start` or `--end`, using decimals, e.g., `00:01:20.500`) and test audio again until confirming the margin covers the entire speech cleanly.
+   - The agent makes this fine-tuning on the current cut in the background without proposing a different cut or re-asking the user.
+5. **Final Execution (Image Rendering)**: Only AFTER audio timestamps are perfectly validated will the agent use the long `clip_video.py` script with `--person-crop` or `--vertical` applying the corrected timestamps.
 
-### Qualidade Mínima por Corte
+### Minimum Quality per Cut
 
-Antes de incluir um corte na proposta, o agent deve passar por este checklist mental:
+Before including a cut in the proposal, the agent must go through this mental checklist:
 
-- [ ] O trecho contém um raciocínio/ideia COMPLETO? (início + desenvolvimento + conclusão)
-- [ ] Se eu fosse um espectador aleatório, entenderia o contexto sem ver o vídeo inteiro?
-- [ ] O trecho tem pelo menos UM hook forte (visual, verbal ou emocional)?
-- [ ] A fala é clara e articulada neste trecho? (sem gaguejar excessivo, sem perda de foco)
-- [ ] Vale a pena compartilhar? Alguém mandaria isso para um amigo?
+- [ ] Does the segment contain a COMPLETE reasoning/idea? (beginning + development + conclusion)
+- [ ] As a random viewer, would I understand the context without seeing the whole video?
+- [ ] Does the segment have at least ONE strong hook (visual, verbal, or emotional)?
+- [ ] Is the speech clear and articulate in this segment? (no excessive stuttering, no loss of focus)
+- [ ] Is it worth sharing? Would someone send this to a friend?
 
-Se qualquer item for "não", o agent deve descartar o trecho ou ajustar os timestamps para cobrir o raciocínio completo.
+If any item is "no," the agent must discard the segment or adjust timestamps to cover the complete reasoning.
+
+## Critical Thinking in Analysis (Mental Model)
+
+The agent must not be a passive transcription processor. It must apply a **critical thinking filter** before issuing any judgment or cut suggestions.
+
+### 1. Objective Deconstruction
+- **What does the author *think* they are saying vs. what they *are* saying?**
+- Identify if the video is an attempt to "sell" an idea, a technical tutorial, or an emotional vent.
+- The summary should reflect the **essence**, not just the word trail.
+
+### 2. Validation of "Viral Moments"
+- **Is the moment "Aha!" or just "Ok"?** If the agent is in doubt about whether a cut is good, it **is not good enough**. 
+- A viral cut must resist the question: *"Would I stop scrolling for this?"*
+- Avoid "filler" bias: it's better to propose 2 exceptional cuts than 5 mediocre ones.
+
+### 3. Detection of Contradictions and Nuances
+- If the person contradicts themselves or hesitates, that is an insight. Do not ignore flaws; they humanize the content and can be the best viral hooks.
+- Critical thinking requires noticing what **was not said**: long silences, changes in voice tone, or facial expressions (via frames) that contradict the speech.
+
+### 4. Intellectual Integrity Checklist
+- [ ] Did I understand the macro context (who is the person, what is the purpose)?
+- [ ] Am I suggesting the cut because it's *easy* to isolate or because it's *truly* valuable?
+- [ ] Does the final summary add value to someone who *didn't* see the video?
 
 ## Technical Context Guardrails (Bug Reports)
 
-Se o vídeo for claramente uma gravação de tela técnica (ex: console do browser aberto, IDE, erro de código, bug report ou demonstração de software), o agent deve:
-- **Omitir** sugestões de corte viral (seria inadequado).
-- **Focar** em identificar logs visuais, mensagens de erro e o fluxo exato que levou ao problema.
-- **Priorizar** a cronologia técnica dos eventos sobre o entretenimento.
+If the video is clearly a technical screen recording (e.g., open browser console, IDE, code error, bug report, or software demo), the agent must:
+- **Omit** viral cut suggestions (it would be inappropriate).
+- **Focus** on identifying visual logs, error messages, and the exact flow that led to the problem.
+- **Prioritize** the technical chronology of events over entertainment.
 
 ## References
 
-- Prompt base e variacoes: `references/prompt_templates.md`
+- Base prompt and variations: `references/prompt_templates.md`
