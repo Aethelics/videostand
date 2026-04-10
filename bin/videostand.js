@@ -68,6 +68,12 @@ function statusTag(type) {
   return tags[type] || '[INFO]';
 }
 
+function printFooter() {
+  console.log('');
+  console.log(colorize('Have any idea? Open an issue on our repo!', 'blue'));
+  console.log(colorize('https://www.github.com/Marcelo-Henry/videostand', 'dim'));
+}
+
 function printHeader(title, subtitle = '') {
   const width = process.stdout.columns || 80;
   const rule = '-'.repeat(Math.max(24, Math.min(width, 80)));
@@ -152,10 +158,12 @@ function printHelp() {
   console.log(colorize('Path Pattern', 'bold'));
   console.log('  local:  ./.<target>/skills/videostand');
   console.log('  global: ~/.<target>/skills/videostand');
+  printFooter();
 }
 
 function printVersion() {
   console.log(PACKAGE_VERSION);
+  printFooter();
 }
 
 function parseOptions(args) {
@@ -611,7 +619,7 @@ async function checkUpdate() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 1200);
       const res = await fetch(
-        'https://registry.npmjs.org/@marcelo-henry/videostand-skill/latest',
+        'https://registry.npmjs.org/videostand-skill/latest',
         { signal: controller.signal }
       );
       clearTimeout(timeout);
@@ -702,33 +710,19 @@ async function main() {
 
   if (command === 'init') {
     commandInit(options, target);
-    return;
-  }
-
-  if (command === 'where') {
+  } else if (command === 'where') {
     commandWhere(options, target);
-    return;
-  }
-
-  if (command === 'status') {
+  } else if (command === 'status') {
     commandStatus(options, target);
-    return;
-  }
-
-  if (command === 'sync') {
+  } else if (command === 'sync') {
     commandSync(options, target);
-    return;
-  }
-
-  if (command === 'remove') {
+  } else if (command === 'remove') {
     commandRemove(options, target);
-    return;
+  } else if (command === 'doctor') {
+    commandDoctor(options, target);
   }
 
-  if (command === 'doctor') {
-    commandDoctor(options, target);
-    return;
-  }
+  printFooter();
 }
 
 main();
