@@ -1,9 +1,11 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/VideoStand-CLI-FF6B35?style=for-the-badge&labelColor=1a1a2e" alt="VideoStand CLI" />
-
+<img src="public/VideoStand.png" alt="VideoStand CLI" />
 <br/>
+</div>
 
+---
+<div align="center">
 <p>
   <a href="https://www.npmjs.com/package/videostand-skill"><img src="https://img.shields.io/npm/v/videostand-skill?style=for-the-badge&logo=npm&logoColor=white&color=CB3837" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/videostand-skill"><img src="https://img.shields.io/npm/dm/videostand-skill?style=for-the-badge&color=4A90D9" alt="npm downloads" /></a>
