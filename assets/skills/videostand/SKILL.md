@@ -164,7 +164,7 @@ Rule: Prioritize total response time without compromising minimum summary qualit
 ## Workflow
 
 1. Resolve input:
-   - local file (`.mp4`)
+   - local file (`.mp4`, `.mkv`, `.mov`, `.avi`, `.webm`, `.gif`)
    - YouTube URL (download to `output/input/` via `yt-dlp`)
 2. Validate prerequisites (`ffmpeg`, `ffprobe`).
    - If `ffmpeg` is missing, follow `Permission Policy (ffmpeg)` before proceeding.

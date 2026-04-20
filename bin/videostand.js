@@ -777,7 +777,8 @@ async function commandWatch(options, dirPath) {
   });
 
   watcher.on('add', path => {
-    if (path.endsWith('.mp4') || path.endsWith('.mkv') || path.endsWith('.mov')) {
+    if (path.endsWith('.mp4') || path.endsWith('.mkv') || path.endsWith('.mov') ||
+        path.endsWith('.avi') || path.endsWith('.webm') || path.endsWith('.gif')) {
       console.log('');
       console.log(colorize(`▶️ New video detected: ${path}`, 'bold', 'green'));
       commandRun(options, path);

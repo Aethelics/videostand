@@ -105,6 +105,12 @@ videostand --version  |  videostand -v
 
 ---
 
+## Supported formats for `vs watch`
+
+`.mp4`, `.mkv`, `.mov`, `.avi`, `.webm`, `.gif`
+
+---
+
 ## 📂 Where files are installed
 
 | Mode                     | Path                            |
